@@ -1,0 +1,45 @@
+import type { JornadaPersistida, ResultadoCalculo } from '../types';
+import { listAll, request } from './client';
+import { isDevBypass } from '../config/devBypass';
+import { devJourneyMock } from './devJourneyMock';
+import type { ItemRegra, PerfilProcessamento, ItemExtraido, RespostaCalculoContextual, Localidade, RegraCalculo, ContaConsumo, Documento, ExtracaoInteligente, DadoExtraido, Calculo, OrdemPagamento, ItemPagamento, Aprovacao, Usuario, Alcada, Prefixo, Concessionaria, SistemaPagamento, ProcessamentoDocumento } from '../types';
+export const api = {
+    faturas: () => request<FaturaAprovada[]>('/faturas'),
+    relatorios: (params: string) => request<Relatorio>('/relatorios/resumo?' + params),
+    confirmarJornada: (id: number, valores: Record<string, string>, enviar: boolean) => isDevBypass() ? devJourneyMock.confirmarJornada(id, valores, enviar) : request<JornadaPersistida>(`/documentos/${id}/confirmar-jornada`, {method:'POST', body:JSON.stringify({valores, enviar})}),
+    jornadaDocumento: (id: number) => isDevBypass() ? devJourneyMock.jornadaDocumento(id) : request<JornadaPersistida>(`/documentos/${id}/jornada`),
+    retomarJornada: () => isDevBypass() ? devJourneyMock.retomarJornada() : request<JornadaPersistida>('/documentos/jornada/atual'),
+    novaFatura: (id: number) => isDevBypass() ? devJourneyMock.novaFatura() : request<void>(`/documentos/${id}/nova-fatura`, {method:'POST'}),
+    calcularDocumento: (id: number) => isDevBypass() ? devJourneyMock.calcularDocumento(id) : request<ResultadoCalculo>(`/documentos/${id}/calcular-demo`, {method:'POST'}),
+    filaChecker: () => request<JornadaPersistida[]>('/documentos/jornada/checker'),
+    decidirDocumento: (id: number, decisao: 'aprovado' | 'rejeitado', observacao: string, motivo = "") => request<JornadaPersistida>(`/documentos/${id}/decisao-checker`, {method:'POST', body:JSON.stringify({decisao, observacao, motivo})}),
+    concessionariasElegiveis: () => request<{id_concessionaria: number; nome: string; ativo: boolean}[]>('/concessionarias/elegiveis/associacao'),
+    resolverConcessionaria: (id: number, id_concessionaria: number) => request<ExtracaoInteligente>(`/extracoes_inteligentes/${id}/resolver-concessionaria`, { method: 'POST', body: JSON.stringify({id_concessionaria}) }),
+    revalidarExtracao: (id: number) => request<ExtracaoInteligente>(`/extracoes_inteligentes/${id}/revalidar`, { method: 'POST' }),
+    enviarValidacao: (id: number) => request<ExtracaoInteligente>(`/extracoes_inteligentes/${id}/enviar-validacao`, { method: 'POST' }),
+    prefixosUsuario: (id: number) => request<{ vinculos: { id_prefixo: number; ativo: boolean }[] }>(`/usuarios/${id}/prefixos`),
+    uploadInicial: (file: File) => {
+        if (isDevBypass()) return devJourneyMock.uploadInicial(file);
+        const body = new FormData(); body.append('file', file);
+        return request<Documento>('/documentos/upload', { method: 'POST', body });
+    },
+    processarInteligente: (id: number) => isDevBypass() ? devJourneyMock.processarInteligente(id) : request<ProcessamentoDocumento>(`/documentos/${id}/processar-inteligente`, { method: 'POST' }),
+    perfis: () => listAll<PerfilProcessamento>('perfis_processamento'),
+    itensExtraidos: () => listAll<ItemExtraido>('itens_extraidos'),
+    localidades: () => listAll<Localidade>('localidades'),
+    itensRegra: () => listAll<ItemRegra>('itens_regra'),
+    regras: () => listAll<RegraCalculo>('regras_calculo'),
+    validarItem: (id: number, valor?: string) => request<ItemExtraido>(`/itens_extraidos/${id}/validacao`, { method: 'PATCH', body: JSON.stringify(valor === undefined ? {} : { valor_validado: valor }) }),
+    calcular: (id: number) => request<RespostaCalculoContextual>(`/contas_consumo/${id}/calcular`, { method: 'POST' }),
+    contas: () => listAll<ContaConsumo>('contas_consumo'), conta: (id: number) => request<ContaConsumo>(`/contas_consumo/${id}`),
+    documentos: () => listAll<Documento>('documentos'), extracoes: () => listAll<ExtracaoInteligente>('extracoes_inteligentes'), dados: () => listAll<DadoExtraido>('dados_extraidos'),
+    calculos: () => listAll<Calculo>('calculos'), ordens: () => listAll<OrdemPagamento>('ordens_pagamento'), ordem: (id: number) => request<OrdemPagamento>(`/ordens_pagamento/${id}`), itens: () => listAll<ItemPagamento>('itens_pagamento'),
+    aprovacoes: () => listAll<Aprovacao>('aprovacoes'), usuarios: () => listAll<Usuario>('usuarios'), alcadas: () => listAll<Alcada>('alcadas'), prefixos: () => listAll<Prefixo>('prefixos'), concessionarias: () => listAll<Concessionaria>('concessionarias'), sistemas: () => listAll<SistemaPagamento>('sistemas_pagamento'),
+    upload: (id: number, file: File) => { const body = new FormData(); body.append('file', file); return request<Documento>(`/contas_consumo/${id}/documentos/upload`, { method: 'POST', body }); },
+    processar: (id: number) => request<ProcessamentoDocumento>(`/documentos/${id}/processar`, { method: 'POST' }),
+    validar: (id: number, valor?: string) => request<DadoExtraido>(`/dados_extraidos/${id}/validacao`, { method: 'PATCH', body: JSON.stringify(valor === undefined ? {} : { valor_validado: valor }) }),
+    decidir: (id_ordem: number, decisao: 'aprovado' | 'rejeitado', observacao: string) => request<Aprovacao>('/aprovacoes', { method: 'POST', body: JSON.stringify({ id_ordem, decisao, observacao: observacao || null, data_hora: new Date().toISOString() }) }),
+};
+
+export interface FaturaAprovada { id_fatura: number; tipo: string; competencia: string; prefixo: string; valor: string; solicitado_por: string; confirmado_por: string; data_confirmacao: string; /** Opcional: o backend atual não envia (só lista confirmadas). Ver getStatusFatura. */ status?: string }
+export interface Relatorio { valor_total: string; quantidade: number; energia: string; agua: string; mensal: {competencia: string; valor: string; energia: string; agua: string}[]; prefixos: {prefixo: string; valor: string}[] }

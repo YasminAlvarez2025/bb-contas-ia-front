@@ -1,0 +1,8 @@
+# Não enviar configuração local nem saídas de build para a Vercel.
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.vercel
