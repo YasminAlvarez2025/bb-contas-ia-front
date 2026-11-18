@@ -107,8 +107,8 @@ npm ci
 npm run build:demo   # usa .env.demo (VITE_DEMO_ABERTA=true)
 ```
 
-Nesse modo o sistema entra direto como usuário fictício e todas as respostas
-vêm dos mocks (`src/auth/devBypass.ts`, `src/mocks/`). O build comum
+Nesse modo a tela de login aparece normalmente, mas "Entrar" funciona sem
+preencher credenciais (usuário fictício), e todas as respostas vêm dos mocks (`src/auth/devBypass.ts`, `src/mocks/`). O build comum
 (`npm run build`) não ativa esse modo.
 
 Publicação: `vercel.json` (Vercel) e `netlify.toml` (Netlify) já estão
